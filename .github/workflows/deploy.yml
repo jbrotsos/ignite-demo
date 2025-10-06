@@ -1,0 +1,77 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  ACR_NAME: acrvulnerableapp
+  IMAGE_NAME: vulnerable-app
+  AZURE_WEBAPP_NAME: app-vulnerable-webapp
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.ACR_NAME }}.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build and push Docker image
+      run: |
+        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+    - name: Scan Docker image with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-image-results.sarif'
+
+    - name: Upload Trivy results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: trivy-image-results.sarif
+
+  deploy:
+    name: Deploy to Azure Web App
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy.outputs.webapp-url }}
+    
+    steps:
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure Web App
+      id: deploy
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+    - name: Azure logout
+      run: |
+        az logout

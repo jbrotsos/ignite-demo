@@ -1,0 +1,39 @@
+# Checkov Configuration
+# Suppress specific checks if needed (for demonstration purposes only)
+
+# Example: To suppress a specific check globally
+# CKV_DOCKER_2: Ensure that HEALTHCHECK instructions have been added to container images
+# CKV_DOCKER_3: Ensure that a user for the container has been created
+
+# For this vulnerable application, we intentionally want all checks to run
+# and report findings, so we don't suppress anything
+
+# You can add suppressions like this:
+# skip-check:
+#   - CKV_DOCKER_2
+#   - CKV_DOCKER_3
+
+# Frameworks to scan
+framework:
+  - terraform
+  - dockerfile
+  - secrets
+  - github_actions
+
+# Output formats
+output:
+  - cli
+  - sarif
+  - json
+
+# Enable compact output
+compact: false
+
+# Quiet mode
+quiet: false
+
+# Download external modules
+download-external-modules: true
+
+# Severity threshold
+soft-fail: true

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      # VULNERABILITY: Hardcoded credentials
+      - DB_PASSWORD=SuperSecretPassword123!
+      - API_KEY=sk-1234567890abcdef
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+  
+  db:
+    image: postgres:12
+    environment:
+      # VULNERABILITY: Weak database password
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_USER=admin
+      - POSTGRES_DB=vulnerable_app
+    ports:
+      # VULNERABILITY: Database exposed on host network
+      - "5432:5432"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
