@@ -5,8 +5,8 @@
 ## Overview
 
 This project is a deliberately vulnerable web application designed to test agentless code scanning capabilities in:
-- **Microsoft Defender for Cloud**
-- **GitHub Advanced Security (GHAS)**
+- **Microsoft Defender for Cloud** (Agentless scanning for code, containers, and infrastructure)
+- **GitHub Advanced Security (GHAS)** (CodeQL, Secret Scanning, Dependabot)
 
 The application includes various security vulnerabilities across multiple layers:
 - Application code vulnerabilities
@@ -14,6 +14,13 @@ The application includes various security vulnerabilities across multiple layers
 - Container security issues
 - Hardcoded secrets and credentials
 - Dependency vulnerabilities
+
+**Key Features:**
+- ✅ Agentless security scanning (no local tools required)
+- ✅ Automated GitHub Actions workflows
+- ✅ Terraform infrastructure deployment to Azure
+- ✅ Real-world vulnerable code patterns
+- ✅ Comprehensive documentation
 
 ## Project Structure
 
@@ -121,25 +128,17 @@ The application includes various security vulnerabilities across multiple layers
 
 ### Testing Vulnerabilities Locally
 
-Before deploying, you can test security scanners locally:
+Before deploying, you can test the application locally:
 
-#### Bandit (Python Security Linter)
+#### Run the Application
 ```bash
-pip install bandit
-bandit -r . -f txt
+python app.py
 ```
+The app will be available at http://localhost:5000
 
-#### Checkov (IaC Scanner)
+#### Run with Docker Compose
 ```bash
-pip install checkov
-checkov -d . --framework terraform,dockerfile
-```
-
-#### Trivy (Container Scanner)
-```bash
-# Install Trivy first: https://aquasecurity.github.io/trivy/latest/getting-started/installation/
-trivy fs .
-trivy image <image-name>
+docker-compose up --build
 ```
 
 ## GitHub Advanced Security (GHAS) Setup
@@ -181,91 +180,53 @@ GitHub will automatically detect:
 
 ## Microsoft Defender for Cloud Setup
 
-### 1. Connect GitHub to Defender for Cloud
+### Quick Start
 
-1. **Sign in to Azure Portal**
-   - Go to https://portal.azure.com
+For detailed step-by-step instructions, see **[DEFENDER_SETUP.md](DEFENDER_SETUP.md)**
 
-2. **Navigate to Microsoft Defender for Cloud**
-   - Search for "Microsoft Defender for Cloud"
-   - Click on **Environment settings**
+### Overview
 
-3. **Add GitHub Connector**
-   - Click **+ Add environment**
-   - Select **GitHub**
-   - Click **Authorize** to connect your GitHub account
-   - Select the repositories you want to scan
+1. **Enable Defender for Cloud**
+   - Sign in to Azure Portal
+   - Enable Defender for DevOps (Free)
+   - Enable Defender for Containers
+   - Enable Defender for App Service
 
-4. **Enable Defender Plans**
-   - Enable **Defender for DevOps**
-   - Enable **Defender for Containers**
-   - Enable **Defender for App Service**
+2. **Connect GitHub Repository**
+   - In Defender for Cloud, go to Environment settings
+   - Add GitHub environment
+   - Authorize connection to jbrotsos/ignite-demo
+   - Enable agentless scanning
 
-### 2. Configure Agentless Scanning
+3. **View Findings**
+   - Navigate to DevOps security
+   - View code vulnerabilities, secrets, IaC issues
+   - Check Recommendations for infrastructure findings
+   - Review Regulatory compliance dashboard
 
-Defender for Cloud provides agentless scanning for:
-
-#### Code Repositories (GitHub)
-- Automatically scans code for vulnerabilities
-- Detects secrets and credentials
-- Identifies IaC misconfigurations
-- No agent installation required
-
-#### Container Images
-- Scans images in Azure Container Registry
-- Detects vulnerabilities in base images and dependencies
-- Runs automatically on push
-
-#### Azure Resources
-- Scans deployed infrastructure
-- Checks for misconfigurations
-- Monitors compliance with security benchmarks
-
-### 3. View Findings in Defender for Cloud
-
-1. **Navigate to Recommendations**
-   - Go to **Defender for Cloud** → **Recommendations**
-   - Filter by resource type or severity
-
-2. **Review Code Vulnerabilities**
-   - Look for findings from GitHub repositories
-   - Review SQL injection, command injection alerts
-   - Check for hardcoded secrets
-
-3. **Review IaC Misconfigurations**
-   - Check Terraform findings
-   - Review network security group rules
-   - Validate encryption settings
-
-4. **Review Container Vulnerabilities**
-   - Check Docker image scan results
-   - Review base image vulnerabilities
-   - Check for malware
-
-### 4. Secure Score
-
-- Navigate to **Secure Score** in Defender for Cloud
-- Review security posture
-- Implement recommended remediation steps
+See **[DEFENDER_SETUP.md](DEFENDER_SETUP.md)** for complete instructions.
 
 ## Azure Deployment
 
-### 1. Configure Azure Resources
+### Quick Start
+
+For detailed step-by-step instructions, see **[TERRAFORM_SETUP.md](TERRAFORM_SETUP.md)**
+
+### Prerequisites
+
+- Azure CLI installed
+- Terraform 1.0+ installed
+- Azure subscription
+- Appropriate permissions
+
+### Deploy Infrastructure
 
 1. **Login to Azure**
    ```bash
    az login
    ```
 
-2. **Create Service Principal**
-   ```bash
-   az ad sp create-for-rbac --name "github-actions-sp" \
-     --role contributor \
-     --scopes /subscriptions/<subscription-id> \
-     --sdk-auth
-   ```
-
-3. **Deploy Infrastructure with Terraform**
+2. **Deploy with Terraform**
    ```bash
    cd terraform
    terraform init
@@ -273,60 +234,71 @@ Defender for Cloud provides agentless scanning for:
    terraform apply
    ```
 
-### 2. Configure GitHub Secrets
+3. **Configure GitHub Secrets**
+   
+   Create a service principal:
+   ```bash
+   az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes /subscriptions/<subscription-id> --sdk-auth
+   ```
+   
+   Add these secrets to GitHub (**Settings** → **Secrets and variables** → **Actions**):
+   - `AZURE_CREDENTIALS` - Service principal JSON output
+   - `ACR_USERNAME` - Azure Container Registry admin username  
+   - `ACR_PASSWORD` - Azure Container Registry admin password
 
-Add the following secrets to your GitHub repository (**Settings** → **Secrets and variables** → **Actions**):
+4. **Deploy Application**
+   
+   Push code to `main` branch - GitHub Actions will automatically build and deploy
 
-- `AZURE_CREDENTIALS` - Output from service principal creation
-- `ACR_USERNAME` - Azure Container Registry admin username
-- `ACR_PASSWORD` - Azure Container Registry admin password
-
-### 3. Deploy Application
-
-1. Push code to `main` branch
-2. GitHub Actions will automatically:
-   - Build Docker image
-   - Push to Azure Container Registry
-   - Deploy to Azure Web App for Containers
-
-### 4. Monitor Deployment
-
-- Check GitHub Actions for deployment status
-- View application at: `https://<webapp-name>.azurewebsites.net`
+See **[TERRAFORM_SETUP.md](TERRAFORM_SETUP.md)** for complete instructions.
 
 ## Security Scanning Workflows
 
 ### Automated Scans
 
-The project includes three GitHub Actions workflows:
+The project includes GitHub Actions workflows:
 
 1. **CodeQL Analysis** (`.github/workflows/codeql.yml`)
    - Runs on push, PR, and weekly schedule
    - Detects code vulnerabilities
    - Results appear in GitHub Security tab
+   - Part of **GitHub Advanced Security**
 
-2. **Security Scanning** (`.github/workflows/security-scan.yml`)
-   - **Bandit** - Python security linter
-   - **Checkov** - IaC security scanner
-   - **Trivy** - Dependency and container scanner
-   - **TruffleHog** - Secret detection
+2. **Deploy** (`.github/workflows/deploy.yml`)
+   - Builds and pushes Docker image to Azure Container Registry
+   - Deploys to Azure Web App for Containers
+   - Scanned by **Microsoft Defender for Cloud**
 
-3. **Deploy** (`.github/workflows/deploy.yml`)
-   - Builds and pushes Docker image
-   - Scans container image
-   - Deploys to Azure
+### Agentless Security Scanning
+
+This project uses **agentless scanning** provided by:
+
+- **Microsoft Defender for Cloud** - Scans:
+  - Code repositories (via GitHub integration)
+  - Container images in Azure Container Registry
+  - Azure infrastructure resources
+  - Terraform IaC configurations
+  
+- **GitHub Advanced Security** - Provides:
+  - CodeQL code scanning
+  - Secret scanning
+  - Dependency scanning (Dependabot)
+
+**No local security tools required!** All scanning happens automatically in the cloud.
 
 ### Manual Scans
 
 You can trigger manual scans:
 
 1. Go to **Actions** tab in GitHub
-2. Select the workflow
+2. Select the **CodeQL** workflow
 3. Click **Run workflow**
+
+For Defender for Cloud scans, push a commit to trigger re-scanning.
 
 ## Expected Security Findings
 
-### CodeQL Findings
+### CodeQL Findings (GitHub Advanced Security)
 - SQL injection vulnerabilities
 - Command injection vulnerabilities
 - Code injection (eval usage)
@@ -334,31 +306,43 @@ You can trigger manual scans:
 - Insecure deserialization
 - XML external entity (XXE) vulnerabilities
 
-### Bandit Findings
-- Hardcoded passwords (B105, B106)
-- Use of pickle (B301)
-- Use of MD5 (B324)
-- SQL injection (B608)
-- Shell injection (B602, B607)
-
-### Checkov Findings
-- Public storage access
-- Missing encryption
-- Open security groups
-- Weak passwords
-- HTTPS not enforced
-- Public network access enabled
-
-### Trivy Findings
-- Outdated base images
-- Vulnerable Python packages
-- Known CVEs in dependencies
-
-### Secret Scanning Findings
+### Secret Scanning Findings (GitHub Advanced Security)
 - AWS access keys
 - API keys
 - Database passwords
 - Generic secrets
+
+### Defender for Cloud Findings (Agentless Scanning)
+
+#### Code Security
+- Hardcoded secrets (API keys, passwords, AWS credentials)
+- SQL injection patterns
+- Command injection risks
+- Insecure deserialization
+- Use of eval() and exec()
+
+#### Infrastructure Security
+- Public storage access
+- Missing encryption
+- Open security groups (SSH/RDP from 0.0.0.0/0)
+- Weak passwords
+- HTTPS not enforced
+- Weak TLS versions (TLS 1.0)
+- SQL firewall allows all IPs
+
+#### Container Security
+- Outdated base images with CVEs
+- Vulnerable Python packages
+- Container running as root
+- Hardcoded secrets in Dockerfile
+- Exposed unnecessary ports
+
+#### IaC Security (Terraform)
+- Public network access enabled
+- Missing encryption settings
+- Overly permissive access policies
+- Purge protection disabled
+- Admin users enabled
 
 ## Remediation Examples
 
